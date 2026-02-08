@@ -1103,9 +1103,15 @@ function parseBytesParaJson(uint8arr, tipoSugerido){
     const divNome = document.createElement('div');
     divNome.className = "nome";
     divNome.textContent = colab.nome;
-    divCaixa.appendChild(divNome);
 
-    const divCargo = document.createElement('div');
+    // Quantidade de diretos (subordinados imediatos) - melhoria solicitada
+    const qtdDiretos = (colab.filhos && Array.isArray(colab.filhos)) ? colab.filhos.length : 0;
+    if (qtdDiretos > 0){
+      divNome.textContent = colab.nome + " — Diretos: " + qtdDiretos;
+    }
+
+    divCaixa.appendChild(divNome);
+const divCargo = document.createElement('div');
     divCargo.className = "cargo";
     divCargo.textContent = colab.cargo;
     divCaixa.appendChild(divCargo);
