@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Organograma ADP Sonova</title>
+
+  <!-- Biblioteca SheetJS para ler Excel no navegador -->
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
+  <style>
+    :root{
+      --sonova-blue: #004A99;
+      --sonova-blue-2: #0A5DB8;
+      --sonova-bg: #F5F7FB;
+      --sonova-border: #C7D3EA;
+      --sonova-text: #0E1B2A;
+      --sonova-muted: #4C5A6A;
+      --sonova-highlight: #FFE08A;
+      --sonova-active: #FFB24A;
+      --sonova-white: #FFFFFF;
+    }
+
+    /* ====== CSS ORIGINAL DO ORGANOGRAMA (MANTIDO, COM OVERRIDES DE COR) ====== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: Arial, sans-serif;
+      background-color: var(--sonova-bg);
+      color: var(--sonova-text);
+      padding: 20px;
+      padding-top: calc(var(--controls-h, 90px) + 24px);
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 14px;
+      margin-top: 0px;
+      color: var(--sonova-blue);
+      letter-spacing: 0.2px;
+    }
+    #saidaOrganograma {
+      display: flex;
+      flex-direction: column;
+      gap: 50px;
+      margin-top: 10px; /* espaço para sidebar */
+    }
+    .bloco-diretoria {
+      background: var(--sonova-white);
+      border: 2px solid var(--sonova-border);
+      border-radius: 8px;
+      padding: 15px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    }
+    .titulo-diretoria {
+      text-align: center;
+      font-weight: bold;
+      font-size: 1.2rem;
+      margin-bottom: 15px;
+      border-bottom: 2px solid var(--sonova-border);
+      padding-bottom: 8px;
+      color: var(--sonova-blue);
+    }
+    ul.organograma-lista, ul.organograma-lista ul {
+      list-style-type: none;
+      margin: 0;
+      padding: 0;
+      position: relative;
+    }
+    ul.organograma-lista li {
+      position: relative;
+      margin: 10px 0;
+      line-height: 20px;
+      padding: 0 0 0 35px;
+    }
+    ul.organograma-lista li::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 15px;
+      border-left: 2px solid #D7DDE8;
+      height: 100%;
+    }
+    ul.organograma-lista li::after {
+      content: "";
+      position: absolute;
+      top: 10px;
+      left: 15px;
+      width: 20px;
+      border-top: 2px solid #D7DDE8;
+    }
+    ul.organograma-lista > li::before,
+    ul.organograma-lista > li::after {
+      border: 0;
+    }
+    .caixa-colaborador {
+      display: inline-block;
+      padding: 8px 12px;
+      border: 2px solid var(--sonova-border);
+      background: var(--sonova-white);
+      border-radius: 8px;
+      position: relative;
+      transition: transform 0.05s ease, box-shadow 0.15s ease;
+    }
+    .caixa-colaborador:hover{
+      transform: translateY(-1px);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    }
+    .nome {
+      font-weight: bold;
+      margin-bottom: 4px;
+      color: var(--sonova-text);
+    }
+    .cargo {
+      font-size: 0.9rem;
+      color: var(--sonova-muted);
+    }
+    .toggle-btn {
+      position: absolute;
+      left: -30px;
+      top: 5px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 2px solid var(--sonova-blue);
+      background: #E9F1FF;
+      cursor: pointer;
+      text-align: center;
+      line-height: 20px;
+      font-weight: bold;
+      user-select: none;
+      color: var(--sonova-blue);
+    }
+    .toggle-btn.hidden {
+      display: none;
+    }
+    li.colapsado > ul {
+      display: none;
+    }
+    li.colapsado .toggle-btn::after {
+      content: '+';
+    }
+    .toggle-btn::after {
+      content: '-';
+    }
+    .highlight {
+      background: var(--sonova-highlight);
+    }
+    .active-match {
+      background: var(--sonova-active);
+    }
+    /* ====== FIM CSS DO ORGANOGRAMA ====== */
+
+    /* ====== Barra de controles (fixa) ====== */
+    .controls {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: var(--sonova-white);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.10);
+      font-size: 13px;
+      z-index: 1000;
+    }
+    .controls .group{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      padding: 6px 8px;
+      border: 1px solid var(--sonova-border);
+      border-radius: 14px;
+      background: #FAFBFF;
+    }
+    .controls .group-label{
+      font-weight: 700;
+      color: var(--sonova-blue);
+      font-size: 12px;
+      margin-right: 4px;
+    }
+    .controls .spacer{
+      width: 6px;
+      height: 1px;
+    }
+    .file-input, .search-input, .url-input {
+      padding: 7px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--sonova-border);
+      width: 220px;
+      font-size: 12px;
+      outline: none;
+      background: var(--sonova-white);
+      color: var(--sonova-text);
+    }
+    .file-input:focus, .search-input:focus, .url-input:focus{
+      border-color: var(--sonova-blue);
+      box-shadow: 0 0 0 2px rgba(0,74,153,0.10);
+    }
+
+    /* Destaque leve: termo encontrado dentro do nome/cargo */
+    .match-term{
+      background: rgba(255, 224, 138, 0.85);
+      padding: 0 2px;
+      border-radius: 3px;
+    }
+
+    /* Leve realce do campo de busca quando houver resultados */
+    .search-input.has-results{
+      border-color: var(--sonova-blue);
+      box-shadow: 0 0 0 2px rgba(0,74,153,0.12);
+    }
+    .btn-primary, .btn-secondary, .btn-danger {
+      color: var(--sonova-white);
+      border: none;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: filter 0.15s ease;
+      white-space: nowrap;
+    }
+    .btn-primary { background-color: var(--sonova-blue); }
+    .btn-secondary { background-color: var(--sonova-blue-2); }
+    .btn-danger { background-color: #8B1E1E; }
+    .btn-primary:hover, .btn-secondary:hover, .btn-danger:hover { filter: brightness(0.92); }
+
+    .dropdown {
+      position: relative;
+      display: inline-block;
+    }
+    .dropdown-content {
+      display: none;
+      position: absolute;
+      background-color: var(--sonova-white);
+      min-width: 220px;
+      border: 1px solid var(--sonova-border);
+      border-radius: 8px;
+      z-index: 1001;
+      max-height: 360px;
+      overflow-y: auto;
+      box-shadow: 0 8px 18px rgba(0,0,0,0.12);
+    }
+    .dropdown-content a, .dropdown-content button.linkbtn {
+      display: block;
+      padding: 8px 12px;
+      text-decoration: none;
+      color: var(--sonova-blue);
+      font-size: 12px;
+      cursor: pointer;
+      background: transparent;
+      border: 0;
+      text-align: left;
+      width: 100%;
+    }
+    .dropdown-content a:hover, .dropdown-content button.linkbtn:hover {
+      background-color: #EEF4FF;
+    }
+    .dropdown:hover .dropdown-content {
+      display: block;
+    }
+
+    /* ====== Sidebar (dicas e comandos rápidos) ====== */
+    .sidebar {
+      position: static;
+      width: auto;
+      height: auto;
+      background: var(--sonova-white);
+      border: 1px solid var(--sonova-border);
+      border-radius: 14px;
+      padding: 10px 12px;
+      font-size: 12px;
+      z-index: 1;
+      overflow: visible;
+      margin: 10px auto 0 auto;
+      max-width: 1100px;
+    }
+    .sidebar h3{
+      font-size: 12px;
+      color: var(--sonova-blue);
+      margin-bottom: 8px;
+    }
+    .sidebar .muted{
+      color: var(--sonova-muted);
+      font-size: 11px;
+      line-height: 1.35;
+      margin-bottom: 10px;
+    }
+    .sidebar .kv{
+      font-size: 11px;
+      border-top: 1px dashed var(--sonova-border);
+      padding-top: 8px;
+      margin-top: 8px;
+    }
+    .sidebar .kv div{ margin: 5px 0; }
+    .badge{
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 999px;
+      border: 1px solid var(--sonova-border);
+      font-size: 11px;
+      color: var(--sonova-muted);
+      background: #FAFBFF;
+    }
+
+    /* Acessibilidade do foco em links do dropdown */
+    .dropdown-content a:focus, .dropdown-content button.linkbtn:focus{
+      outline: 2px solid rgba(0,74,153,0.35);
+      outline-offset: 2px;
+    }
+
+    /* Responsivo simples */
+    @media (max-width: 1100px){
+      #saidaOrganograma{ padding-right: 0; }
+      .sidebar {
+      position: static;
+      width: auto;
+      height: auto;
+      background: var(--sonova-white);
+      border: 1px solid var(--sonova-border);
+      border-radius: 14px;
+      padding: 10px 12px;
+      font-size: 12px;
+      z-index: 1;
+      overflow: visible;
+      margin: 10px auto 0 auto;
+      max-width: 1100px;
+    }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Organograma com Áreas</h1>
+
+  <!-- Área de Controles (barra flutuante) -->
+  <div class="controls">
+    <div class="group">
+      <span class="group-label">Carregar</span>
+      <input type="file" id="fileInput" class="file-input" accept=".xlsx,.xls,.csv" />
+      <input type="text" id="onedriveUrl" class="url-input" placeholder="Link OneDrive/SharePoint (CSV ou Excel)" />
+      <button id="btnCarregarUrl" class="btn-primary">Carregar do OneDrive</button>
+    </div>
+
+    <div class="group">
+      <span class="group-label">Visão</span>
+      <button id="btnFecharTodos" class="btn-primary">Fechar Todos (Visão Total)</button>
+      <button id="btnAbrirTodos" class="btn-secondary">Abrir Todos (Todos os níveis)</button>
+    </div>
+
+    <div class="group">
+      <span class="group-label">Busca</span>
+      <input type="text" id="buscaInput" class="search-input" placeholder="Buscar por nome ou função..." />
+      <button id="btnBuscar" class="btn-primary">Buscar</button>
+      <button id="btnNext" class="btn-secondary">Próximo</button>
+      <span id="matchCount" class="badge"></span>
+      <span id="totalCount" class="badge"></span>
+    </div>
+
+    <div class="group">
+      <span class="group-label">Navegação</span>
+      <div class="dropdown">
+        <button class="btn-primary">Áreas</button>
+        <div class="dropdown-content" id="navAreas"></div>
+      </div>
+
+      <div class="dropdown">
+        <button class="btn-primary">Gestores</button>
+        <div class="dropdown-content" id="navGestores"></div>
+      </div>
+    </div>
+
+    <div class="group">
+      <span class="group-label">Memória</span>
+      <button id="btnLimparMemoria" class="btn-danger">Limpar memória</button>
+      <span class="badge">Fonte: <span id="fonteAtual">Nenhuma</span></span>
+      <span class="badge">Storage: <span id="storageStatus">vazio</span></span>
+    </div>
+    </div>
+
+  <div class="sidebar">
+    <div class="muted">
+      Dica: Enter no campo de busca -> se já houver resultados, vai para o próximo. Se não, executa a busca.
+    </div>
+  </div>
+
+  <div id="saidaOrganograma"></div>
+
+<script>
+  
+  // Ajusta automaticamente o espaçamento do topo para não esconder o título / primeiro bloco
+  function ajustarEspacamentoTopo(){
+    const controls = document.querySelector('.controls');
+    if(!controls) return;
+    const h = Math.ceil(controls.getBoundingClientRect().height);
+    document.documentElement.style.setProperty('--controls-h', h + 'px');
+  }
+  window.addEventListener('resize', ajustarEspacamentoTopo);
+  document.addEventListener('DOMContentLoaded', ajustarEspacamentoTopo);
+
+  // ===============================
+  // Configuração / chaves de storage
+  // ===============================
+  const LS_KEYS = {
+    DATA: "sonova_org_data_v1",
+    LAST_URL: "sonova_org_last_url_v1",
+    LAST_SOURCE: "sonova_org_last_source_v1"
+  };
+
+  // ===============================
+  // Estado global
+  // ===============================
+  let searchMatches = [];
+  let currentMatchIndex = 0;
+
+  // Cache do último dataset renderizado
+  let lastDiretorias = null;
+
+  // ===============================
+  // UI helpers
+  // ===============================
+  function setFonteAtual(texto){
+    const el = document.getElementById("fonteAtual");
+    if (el) el.textContent = texto || "Nenhuma";
+  }
+
+  function setStorageStatus(){
+    const el = document.getElementById("storageStatus");
+    if (!el) return;
+    const has = !!localStorage.getItem(LS_KEYS.DATA);
+    el.textContent = has ? "ok" : "vazio";
+  }
+
+  function updateMatchCounter() {
+    const matchCountElem = document.getElementById('matchCount');
+    if (searchMatches.length > 0) {
+      matchCountElem.textContent = `Ocorrência ${currentMatchIndex + 1} de ${searchMatches.length}`;
+    } else {
+      matchCountElem.textContent = "Nenhuma ocorrência";
+    }
+  }
+
+  function safeText(v){
+    return String(v ?? "").trim();
+  }
+
+  // ===============================
+  // Persistência
+  // ===============================
+  function salvarNoStorage(diretorias, sourceLabel){
+    try{
+      localStorage.setItem(LS_KEYS.DATA, JSON.stringify(diretorias));
+      localStorage.setItem(LS_KEYS.LAST_SOURCE, sourceLabel || "");
+      setStorageStatus();
+    }catch(err){
+      console.error("Falha ao salvar no storage:", err);
+    }
+  }
+
+  function carregarDoStorage(){
+    try{
+      const raw = localStorage.getItem(LS_KEYS.DATA);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    }catch(err){
+      console.error("Falha ao ler storage:", err);
+      return null;
+    }
+  }
+
+  function limparStorage(){
+    localStorage.removeItem(LS_KEYS.DATA);
+    localStorage.removeItem(LS_KEYS.LAST_URL);
+    localStorage.removeItem(LS_KEYS.LAST_SOURCE);
+    setStorageStatus();
+    setFonteAtual("Nenhuma");
+    document.getElementById("saidaOrganograma").innerHTML = "";
+    document.getElementById("navAreas").innerHTML = "";
+    document.getElementById("navGestores").innerHTML = "";
+    document.getElementById("totalCount").textContent = "";
+    document.getElementById("matchCount").textContent = "";
+    lastDiretorias = null;
+  }
+
+  // ===============================
+// OneDrive/SharePoint: normalização de link
+// ===============================
+function adicionarDownload1(u){
+  u = safeText(u);
+  if (!u) return "";
+  if (u.includes("download=1")) return u;
+  const hasQuery = u.includes("?");
+  return u + (hasQuery ? "&" : "?") + "download=1";
+}
+
+// Para links do SharePoint do tipo Doc.aspx, tentamos também a variação download.aspx
+function gerarCandidatasUrl(url){
+  const u = safeText(url);
+  const cands = [];
+  if (!u) return cands;
+
+  // --- Google Sheets ---
+  // Aceita:
+  // 1) Publicado: https://docs.google.com/spreadsheets/d/e/.../pub?output=xlsx|csv
+  // 2) Edit:      https://docs.google.com/spreadsheets/d/<ID>/edit?gid=...#gid=...
+  if (u.includes("docs.google.com/spreadsheets")) {
+    cands.push(u);
+
+    // Se for link /edit, tenta gerar um export CSV (mais provável de funcionar sem login)
+    if (u.includes("/edit")) {
+      // Extrai ID
+      const mId = u.match(/\/spreadsheets\/d\/([^\/]+)/i);
+      const id = mId ? mId[1] : null;
+
+      // Extrai gid
+      let gid = null;
+      const mGidHash = u.match(/#gid=(\d+)/i);
+      const mGidQuery = u.match(/[?&]gid=(\d+)/i);
+      if (mGidHash) gid = mGidHash[1];
+      else if (mGidQuery) gid = mGidQuery[1];
+
+      if (id) {
+        if (gid) {
+          cands.push(`https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`);
+          cands.push(`https://docs.google.com/spreadsheets/d/${id}/export?format=xlsx&gid=${gid}`);
+        }
+        // fallback planilha inteira
+        cands.push(`https://docs.google.com/spreadsheets/d/${id}/export?format=csv`);
+        cands.push(`https://docs.google.com/spreadsheets/d/${id}/export?format=xlsx`);
+      }
+    }
+
+    // Se for publicado (/pub), adiciona variações de output
+    if (u.includes("/pub")) {
+      if (u.includes("output=xlsx")) cands.push(u.replace("output=xlsx","output=csv"));
+      if (u.includes("output=csv")) cands.push(u.replace("output=csv","output=xlsx"));
+      // se não tiver output, tenta ambos
+      if (!u.includes("output=")) {
+        const base = u.includes("?") ? (u + "&") : (u + "?");
+        cands.push(base + "output=csv");
+        cands.push(base + "output=xlsx");
+      }
+    }
+
+    return Array.from(new Set(cands));
+  }
+
+  // --- SharePoint/OneDrive ---
+  cands.push(u);
+  cands.push(adicionarDownload1(u));
+
+  // Heurística: Doc.aspx -> download.aspx (algumas instâncias aceitam)
+  if (u.includes("/_layouts/15/Doc.aspx")) {
+    const u2 = u.replace("/_layouts/15/Doc.aspx", "/_layouts/15/download.aspx");
+    cands.push(u2);
+    cands.push(adicionarDownload1(u2));
+  }
+
+  // Também tentamos a variação action=download quando existir
+  if (u.includes("action=default")) {
+    const u3 = u.replace("action=default", "action=download");
+    cands.push(u3);
+    cands.push(adicionarDownload1(u3));
+  }
+
+  // Remove duplicados preservando ordem
+  return Array.from(new Set(cands));
+}
+
+function inferirTipoPorNome(nomeOuUrl){
+  const s = safeText(nomeOuUrl).toLowerCase();
+
+  // Google Sheets export/publicação
+  if (s.includes("docs.google.com/spreadsheets")) {
+    if (s.includes("output=csv") || s.includes("format=csv")) return "csv";
+    if (s.includes("output=xlsx") || s.includes("format=xlsx")) return "xlsx";
+    // se for link /edit, assumimos CSV por padrão (export é mais estável)
+    if (s.includes("/edit")) return "csv";
+  }
+
+  // SharePoint/OneDrive/arquivos
+  if (s.includes(".csv") || s.includes("file=gestorbase.csv") || s.includes("file=.csv") || s.includes("file=csv")) return "csv";
+  if (s.endsWith(".csv")) return "csv";
+  if (s.endsWith(".xlsx") || s.endsWith(".xls")) return "xlsx";
+  return "xlsx";
+}
+
+
+async function baixarBytesDeUrl(url){
+  const res = await fetch(url, { mode: "cors" });
+  if (!res.ok) {
+    throw new Error("Não foi possível baixar o arquivo. Verifique o link e permissões.");
+  }
+  const arrayBuffer = await res.arrayBuffer();
+  return new Uint8Array(arrayBuffer);
+}
+
+function bytesParecemXlsx(u8){
+  // XLSX é um ZIP e começa com bytes 'PK' (0x50 0x4B)
+  return u8 && u8.length >= 2 && u8[0] === 0x50 && u8[1] === 0x4B;
+}
+
+function bytesParaTexto(u8){
+  // UTF-8 na maioria dos casos
+  try{
+    return new TextDecoder("utf-8").decode(u8);
+  }catch(_){
+    // Fallback simples
+    let s = "";
+    for (let i=0;i<u8.length;i++) s += String.fromCharCode(u8[i]);
+    return s;
+  }
+}
+
+// ===============================
+// Leitura de Excel/CSV (arquivo local / URL)
+// ===============================
+function excelParaJsonData(uint8arr){
+  const workbook = XLSX.read(uint8arr, { type: 'array' });
+  const sheetName = workbook.SheetNames[0];
+  const worksheet = workbook.Sheets[sheetName];
+  return XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+}
+
+function csvParaJsonData(csvText){
+  // SheetJS consegue ler CSV diretamente (type: 'string')
+  const wb = XLSX.read(csvText, { type: "string" });
+  const sheetName = wb.SheetNames[0];
+  const ws = wb.Sheets[sheetName];
+  return XLSX.utils.sheet_to_json(ws, { defval: "" });
+}
+
+function parseBytesParaJson(uint8arr, tipoSugerido){
+  const tipo = tipoSugerido || (bytesParecemXlsx(uint8arr) ? "xlsx" : "csv");
+  if (tipo === "xlsx" && bytesParecemXlsx(uint8arr)) {
+    return excelParaJsonData(uint8arr);
+  }
+  // Caso não seja XLSX (ou a sugestão seja CSV), tenta como texto/CSV
+  const txt = bytesParaTexto(uint8arr).trim();
+
+  // Se veio HTML (login/preview), não dá para ler do navegador
+  const lower = txt.slice(0, 200).toLowerCase();
+  if (lower.includes("<html") || lower.includes("<!doctype html") || lower.includes("<head")) {
+    throw new Error(
+      "O link abriu uma página do SharePoint (preview/login) em vez do arquivo CSV. " +
+      "Para funcionar por link, use um link de download direto do CSV (Baixar) ou carregue o arquivo localmente."
+    );
+  }
+  return csvParaJsonData(txt);
+}
+
+  function excelParaJsonData(uint8arr){
+    const workbook = XLSX.read(uint8arr, { type: 'array' });
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    return XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+  }
+
+  // ===============================
+  // Renderização principal
+  // ===============================
+  function renderizar(diretorias, sourceLabel){
+    lastDiretorias = diretorias;
+
+    // Total de colaboradores (usa total de chaves por área)
+    let totalColaboradores = 0;
+    Object.keys(diretorias).forEach(area => {
+      totalColaboradores += Object.keys(diretorias[area]).length;
+    });
+    document.getElementById('totalCount').textContent = `Total: ${totalColaboradores}`;
+
+    // Menu de Áreas
+    const navAreas = document.getElementById('navAreas');
+    navAreas.innerHTML = "";
+    Object.keys(diretorias).sort().forEach(nomeArea => {
+      const areaId = "area-" + nomeArea.replace(/\s+/g, '-').toLowerCase();
+      const link = document.createElement('a');
+      link.href = '#' + areaId;
+      link.textContent = nomeArea;
+      navAreas.appendChild(link);
+    });
+
+    // Menu de Gestores: colaboradores com filhos
+    const gestoresSet = new Set();
+    Object.keys(diretorias).forEach(nomeArea => {
+      const colaboradores = diretorias[nomeArea];
+      Object.keys(colaboradores).forEach(matricula => {
+        const colab = colaboradores[matricula];
+        if (colab.filhos && colab.filhos.length > 0) {
+          gestoresSet.add(colab.nomeExibicao);
+        }
+      });
+    });
+    const gestoresArray = Array.from(gestoresSet).sort((a,b)=>a.localeCompare(b));
+    const navGestores = document.getElementById('navGestores');
+    navGestores.innerHTML = "";
+    gestoresArray.forEach(gestorNome => {
+      const btn = document.createElement('button');
+      btn.className = "linkbtn";
+      btn.type = "button";
+      btn.textContent = gestorNome;
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        scrollToGestor(gestorNome);
+      });
+      navGestores.appendChild(btn);
+    });
+
+    // Limpa a saída e cria blocos por área
+    const saida = document.getElementById('saidaOrganograma');
+    saida.innerHTML = "";
+    Object.keys(diretorias).sort().forEach(nomeArea => {
+      const bloco = criarBlocoArea(nomeArea, diretorias[nomeArea]);
+      saida.appendChild(bloco);
+    });
+
+    // Atualiza fonte
+    setFonteAtual(sourceLabel || "Arquivo local");
+    setStorageStatus();
+  }
+
+  // ===============================
+  // Busca
+  // ===============================
+  function escapeHtml(str){
+    return String(str)
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/\"/g,'&quot;')
+      .replace(/'/g,'&#39;');
+  }
+
+  function escapeRegExp(str){
+    return String(str).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  }
+
+  function resetarMarcacaoBusca(){
+    document.querySelectorAll('.caixa-colaborador').forEach(caixa => {
+      caixa.classList.remove('highlight');
+      caixa.classList.remove('active-match');
+
+      const nomeEl = caixa.querySelector('.nome');
+      const cargoEl = caixa.querySelector('.cargo');
+
+      if (nomeEl){
+        if (!nomeEl.dataset.orig) nomeEl.dataset.orig = nomeEl.textContent || "";
+        nomeEl.textContent = nomeEl.dataset.orig;
+      }
+      if (cargoEl){
+        if (!cargoEl.dataset.orig) cargoEl.dataset.orig = cargoEl.textContent || "";
+        cargoEl.textContent = cargoEl.dataset.orig;
+      }
+    });
+
+    const input = document.getElementById('buscaInput');
+    input.classList.remove('has-results');
+  }
+
+  function executarBusca(){
+    const termo = document.getElementById('buscaInput').value.trim().toLowerCase();
+    if (!termo) return;
+
+    resetarMarcacaoBusca();
+
+    searchMatches = [];
+    currentMatchIndex = 0;
+
+    const rx = new RegExp(escapeRegExp(termo), 'ig');
+    const todasCaixas = document.querySelectorAll('.caixa-colaborador');
+    todasCaixas.forEach(caixa => {
+      const nomeEl = caixa.querySelector('.nome');
+      const cargoEl = caixa.querySelector('.cargo');
+      const nomeTxt = (nomeEl?.dataset.orig ?? nomeEl?.textContent ?? "");
+      const cargoTxt = (cargoEl?.dataset.orig ?? cargoEl?.textContent ?? "");
+
+      const nomeLow = String(nomeTxt).toLowerCase();
+      const cargoLow = String(cargoTxt).toLowerCase();
+
+      if (nomeLow.includes(termo) || cargoLow.includes(termo)) {
+        caixa.classList.add('highlight');
+        searchMatches.push(caixa);
+
+        // Marca o termo dentro do nome/cargo (destaque leve)
+        if (nomeEl){
+          const safe = escapeHtml(nomeTxt);
+          nomeEl.innerHTML = safe.replace(rx, (m)=>`<span class="match-term">${escapeHtml(m)}</span>`);
+        }
+        if (cargoEl){
+          const safe = escapeHtml(cargoTxt);
+          cargoEl.innerHTML = safe.replace(rx, (m)=>`<span class="match-term">${escapeHtml(m)}</span>`);
+        }
+      }
+    });
+
+    if (searchMatches.length > 0) {
+      document.getElementById('buscaInput').classList.add('has-results');
+      const firstMatch = searchMatches[0];
+      firstMatch.classList.add('active-match');
+      expandirCaminho(firstMatch);
+      firstMatch.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    updateMatchCounter();
+  }
+
+  function proximoResultado(){
+    if (searchMatches.length === 0) return;
+    searchMatches[currentMatchIndex].classList.remove('active-match');
+    currentMatchIndex = (currentMatchIndex + 1) % searchMatches.length;
+    const nextMatch = searchMatches[currentMatchIndex];
+    nextMatch.classList.add('active-match');
+    expandirCaminho(nextMatch);
+    nextMatch.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    updateMatchCounter();
+  }
+
+  function expandirCaminho(elem) {
+    let li = elem.closest('li');
+    while (li) {
+      li.classList.remove('colapsado');
+      li = li.parentElement.closest('li');
+    }
+  }
+
+  function scrollToGestor(gestorNome) {
+    const targetId = 'gestor-' + gestorNome.replace(/\s+/g, '-').toLowerCase();
+    const liGestor = document.getElementById(targetId);
+    if (liGestor) {
+      liGestor.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      liGestor.classList.add('active-match');
+      setTimeout(() => liGestor.classList.remove('active-match'), 1800);
+    }
+  }
+
+  // ===============================
+  // Agrupamento: agora mostramos "Área" (coluna continua 2-Diretoria)
+  // ===============================
+  function agruparPorArea(jsonData) {
+    const areas = {};
+    jsonData.forEach(linha => {
+      const area = safeText(linha["2-Diretoria"]) || "Sem Área";
+      const matricula = safeText(linha["9-Matricula"]);
+      const nomeSemMatricula = safeText(linha["10-Nome"]) || "Sem Nome";
+      const nome = nomeSemMatricula + (matricula ? " (" + matricula + ")" : "");
+      const cargo = safeText(linha["29-Título Cargo"]) || "Sem Cargo";
+      const gestor = safeText(linha["38-Matrícula Gestor"] || "");
+      const nomeGestor = safeText(linha["39-Gestor "] || "");
+
+      if (!areas[area]) areas[area] = {};
+
+      // Se matrícula está vazia, gera um id estável para evitar sobrescrita
+      const chave = matricula || ("SEM_MAT_" + nomeSemMatricula + "_" + cargo).replace(/\s+/g,'_');
+
+      areas[area][chave] = {
+        matricula: matricula,
+        nome: nome,
+        nomeExibicao: nomeSemMatricula,
+        cargo: cargo,
+        gestor: gestor,
+        nomeGestor: nomeGestor,
+        filhos: []
+      };
+    });
+
+    // Mapeia filhos somente quando a matrícula do gestor existe como chave do mesmo grupo
+    Object.keys(areas).forEach(a => {
+      const colaboradores = areas[a];
+      Object.keys(colaboradores).forEach(m => {
+        const colab = colaboradores[m];
+        if (colab.gestor && colaboradores[colab.gestor]) {
+          colaboradores[colab.gestor].filhos.push(m);
+        }
+      });
+    });
+
+    return areas;
+  }
+
+  // ===============================
+  // Bloco por Área
+  // ===============================
+  function criarBlocoArea(nomeArea, colaboradores) {
+    const divBloco = document.createElement('div');
+    divBloco.className = "bloco-diretoria";
+
+    const areaId = "area-" + nomeArea.replace(/\s+/g, '-').toLowerCase();
+    divBloco.setAttribute('id', areaId);
+
+    const divTitulo = document.createElement('div');
+    divTitulo.className = "titulo-diretoria";
+    divTitulo.textContent = nomeArea;
+    divBloco.appendChild(divTitulo);
+
+    let raizes = Object.keys(colaboradores).filter(m => {
+      const g = colaboradores[m].gestor;
+      return !g || !colaboradores[g];
+    });
+
+    raizes.sort((a, b) => {
+      const cargoCompare = colaboradores[a].cargo.localeCompare(colaboradores[b].cargo);
+      if (cargoCompare !== 0) return cargoCompare;
+      return colaboradores[a].nome.localeCompare(colaboradores[b].nome);
+    });
+
+    const ulRaiz = document.createElement('ul');
+    ulRaiz.className = "organograma-lista";
+    raizes.forEach(m => ulRaiz.appendChild(criarLiColaborador(m, colaboradores, 1)));
+    divBloco.appendChild(ulRaiz);
+
+    return divBloco;
+  }
+
+  function criarLiColaborador(chave, colaboradores, level) {
+    const colab = colaboradores[chave];
+    const li = document.createElement('li');
+    li.setAttribute('data-level', level);
+    li.setAttribute('data-matricula', colab.matricula || "");
+
+    const divCaixa = document.createElement('div');
+    divCaixa.className = "caixa-colaborador";
+
+    const btnToggle = document.createElement('div');
+    btnToggle.className = "toggle-btn";
+    if (!colab.filhos || colab.filhos.length === 0) {
+      btnToggle.classList.add('hidden');
+    }
+    btnToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      li.classList.toggle('colapsado');
+    });
+
+    // Clique na caixa do gestor também abre/fecha o nível
+    divCaixa.addEventListener('click', (e) => {
+      // Se não tem filhos, não faz nada
+      if (!colab.filhos || colab.filhos.length === 0) return;
+
+      // Evita conflito quando clicar no botão "+"
+      if (e.target && e.target.classList && e.target.classList.contains("toggle-btn")) return;
+
+      li.classList.toggle('colapsado');
+    });
+
+    divCaixa.appendChild(btnToggle);
+
+    const divNome = document.createElement('div');
+    divNome.className = "nome";
+    divNome.textContent = colab.nome;
+    divCaixa.appendChild(divNome);
+
+    const divCargo = document.createElement('div');
+    divCargo.className = "cargo";
+    divCargo.textContent = colab.cargo;
+    divCaixa.appendChild(divCargo);
+
+    li.appendChild(divCaixa);
+
+    if (colab.filhos && colab.filhos.length > 0) {
+      li.setAttribute('id', 'gestor-' + colab.nomeExibicao.replace(/\s+/g, '-').toLowerCase());
+    }
+
+    if (colab.filhos && colab.filhos.length > 0) {
+      colab.filhos.sort((a, b) => {
+        const cargoCompare = colaboradores[a].cargo.localeCompare(colaboradores[b].cargo);
+        if (cargoCompare !== 0) return cargoCompare;
+        return colaboradores[a].nome.localeCompare(colaboradores[b].nome);
+      });
+
+      const ulFilhos = document.createElement('ul');
+      ulFilhos.className = "organograma-lista";
+      colab.filhos.forEach(f => ulFilhos.appendChild(criarLiColaborador(f, colaboradores, level + 1)));
+      li.appendChild(ulFilhos);
+    }
+
+    return li;
+  }
+
+  // ===============================
+  // Eventos - Arquivo local
+  // ===============================
+  document.getElementById('fileInput').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const nome = (file.name || "").toLowerCase();
+  const tipo = nome.endsWith(".csv") ? "csv" : "xlsx";
+
+  const reader = new FileReader();
+
+  reader.onload = function(evt) {
+    try{
+      let jsonData = null;
+
+      if (tipo === "csv") {
+        const txt = String(evt.target.result || "");
+        jsonData = csvParaJsonData(txt);
+      } else {
+        const data = new Uint8Array(evt.target.result);
+        jsonData = excelParaJsonData(data);
+      }
+
+      const areas = agruparPorArea(jsonData);
+      renderizar(areas, tipo === "csv" ? "Arquivo local (CSV)" : "Arquivo local (Excel)");
+      salvarNoStorage(areas, tipo === "csv" ? "Arquivo local (CSV)" : "Arquivo local (Excel)");
+    }catch(err){
+      alert(err.message || "Erro ao ler o arquivo.");
+      console.error(err);
+    }
+  };
+
+  if (tipo === "csv") {
+    reader.readAsText(file, "utf-8");
+  } else {
+    reader.readAsArrayBuffer(file);
+  }
+});
+
+  // ===============================
+  // Eventos - Carregar URL OneDrive
+  // ===============================
+  document.getElementById('btnCarregarUrl').addEventListener('click', async function() {
+  const url = document.getElementById('onedriveUrl').value;
+  if (!url) return;
+
+  const tipoSugerido = inferirTipoPorNome(url);
+
+  try{
+    localStorage.setItem(LS_KEYS.LAST_URL, url);
+
+    const candidatas = gerarCandidatasUrl(url);
+    let ultimoErro = null;
+    let jsonData = null;
+
+    for (const u of candidatas){
+      try{
+        const bytes = await baixarBytesDeUrl(u);
+        jsonData = parseBytesParaJson(bytes, tipoSugerido);
+        ultimoErro = null;
+        break;
+      }catch(err){
+        ultimoErro = err;
+      }
+    }
+
+    if (ultimoErro) {
+      throw ultimoErro;
+    }
+    if (!jsonData) {
+      throw new Error("Não foi possível ler o arquivo a partir do link informado.");
+    }
+
+    const areas = agruparPorArea(jsonData);
+    renderizar(areas, "OneDrive/SharePoint (CSV/Excel)");
+    salvarNoStorage(areas, "OneDrive/SharePoint (CSV/Excel)");
+  }catch(err){
+    alert(err.message || "Erro ao carregar do OneDrive/SharePoint.");
+    console.error(err);
+  }
+});
+
+  // ===============================
+  // Botão Colapsar Todos (fecha todos os +)
+  // ===============================
+  document.getElementById('btnFecharTodos').addEventListener('click', function() {
+    window.scrollTo({top: 0, behavior: 'smooth'});
+
+    // Fecha todos os nós que possuem filhos (todos os "+")
+    const lis = document.querySelectorAll('li');
+    lis.forEach(li => {
+      const temFilhos = li.querySelector(':scope > ul');
+      if (temFilhos) {
+        li.classList.add('colapsado');
+      } else {
+        li.classList.remove('colapsado');
+      }
+    });
+  });
+
+  // ===============================
+  // Botão Abrir Todos (expande todos os níveis)
+  // ===============================
+  document.getElementById('btnAbrirTodos').addEventListener('click', function() {
+    window.scrollTo({top: 0, behavior: 'smooth'});
+
+    const lis = document.querySelectorAll('li');
+    lis.forEach(li => {
+      li.classList.remove('colapsado');
+    });
+  });
+
+  // ===============================
+  // Busca
+  // ===============================
+  document.getElementById('btnBuscar').addEventListener('click', executarBusca);
+  document.getElementById('btnNext').addEventListener('click', proximoResultado);
+
+  document.getElementById('buscaInput').addEventListener('keydown', function(e) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (searchMatches.length > 0) {
+        proximoResultado();
+      } else {
+        executarBusca();
+      }
+    }
+  });
+
+  // ===============================
+  // Limpar memória (storage)
+  // ===============================
+  document.getElementById('btnLimparMemoria').addEventListener('click', function(){
+    limparStorage();
+  });
+
+  // ===============================
+  // Boot: tenta carregar do storage automaticamente
+  // ===============================
+  window.addEventListener("DOMContentLoaded", function(){
+    setStorageStatus();
+
+    const lastUrl = localStorage.getItem(LS_KEYS.LAST_URL) || "";
+    document.getElementById("onedriveUrl").value = lastUrl;
+
+    const stored = carregarDoStorage();
+    if (stored){
+      const lastSource = localStorage.getItem(LS_KEYS.LAST_SOURCE) || "Storage";
+      renderizar(stored, lastSource);
+    }
+  });
+</script>
+
+</body>
+</html>
