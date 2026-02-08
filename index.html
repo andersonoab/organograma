@@ -334,11 +334,161 @@
       max-width: 1100px;
     }
     }
+  
+    /* ====== Impressão ====== */
+    @media print {
+      /* Esconde barra fixa e elementos de interação */
+      .controls,
+      .sidebar,
+      #onedriveUrl,
+      #fileInput,
+      #btnCarregarUrl,
+      #btnFecharTodos,
+      #btnAbrirTodos,
+      #btnBuscar,
+      #btnNext,
+      #btnLimparMemoria,
+      #btnImprimir,
+      .dropdown,
+      .toggle-btn {
+        display: none !important;
+      
+      /* Mostra cabeçalho/rodapé customizados */
+      .print-only{
+        display: block !important;
+        position: fixed;
+        left: 0;
+        right: 0;
+        font-size: 10px;
+        color: #000000 !important;
+      }
+      #printHeader{
+        top: 0;
+        border-bottom: 1px solid #999999;
+        padding: 6px 10px;
+        background: #FFFFFF !important;
+      }
+      #printFooter{
+        bottom: 0;
+        border-top: 1px solid #999999;
+        padding: 6px 10px;
+        background: #FFFFFF !important;
+      }
+      .print-row{
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+      }
+      .print-left{ display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+      .print-right{ display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+      .print-title{ font-weight: 700; }
+      .print-sep{ color: #666666; }
+
+      /* Reserva espaço do cabeçalho/rodapé para não sobrepor conteúdo */
+      body{
+        margin: 0 !important;
+        padding-top: 44px !important;
+        padding-bottom: 34px !important;
+      }
+
+      /* Permite quebra de página do bloco (evita empurrar tudo e criar áreas vazias) */
+      .bloco-diretoria{
+        break-inside: auto !important;
+        page-break-inside: auto !important;
+      }
+
+      /* Evita quebrar itens no meio */
+      li{ break-inside: avoid; page-break-inside: avoid; }
+
+    }
+
+      /* Remove o espaço reservado da barra fixa */
+      body {
+        padding: 0 !important;
+        padding-top: 0 !important;
+        background: #FFFFFF !important;
+        color: #000000 !important;
+      }
+
+      h1 {
+        margin: 0 0 10px 0 !important;
+        color: #000000 !important;
+      }
+
+      /* Ajusta layout para papel */
+      #saidaOrganograma {
+        gap: 18px !important;
+        margin-top: 0 !important;
+      }
+
+      .bloco-diretoria {
+        box-shadow: none !important;
+        border: 1px solid #999999 !important;
+        border-radius: 0 !important;
+        padding: 10px !important;
+        page-break-inside: avoid;
+      }
+
+      .titulo-diretoria {
+        border-bottom: 1px solid #999999 !important;
+        color: #000000 !important;
+      }
+
+      /* Expande tudo e evita cortes estranhos */
+      li.colapsado > ul {
+        display: block !important;
+      }
+
+      ul.organograma-lista li::before,
+      ul.organograma-lista li::after {
+        border-color: #BBBBBB !important;
+      }
+
+      .caixa-colaborador {
+        border: 1px solid #999999 !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        page-break-inside: avoid;
+      }
+
+      .highlight,
+      .active-match,
+      .match-term {
+        background: transparent !important;
+      }
+    }
+
   </style>
 </head>
 <body>
 
-  <h1>Organograma ADP Sonova</h1>
+  <!-- Cabeçalho/Rodapé de impressão (somente no modo print) -->
+  <div id="printHeader" class="print-only">
+    <div class="print-row">
+      <div class="print-left">
+        <span class="print-title">Organograma</span>
+        <span class="print-sep">|</span>
+        <span id="printFileName">Fonte: -</span>
+      </div>
+      <div class="print-right">
+        <span id="printDateTime">Data/Hora: -</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="printFooter" class="print-only">
+    <div class="print-row">
+      <div class="print-left">
+        <span id="printTotal">Total: -</span>
+      </div>
+      <div class="print-right">
+        <span id="printPageHint">Página: use cabeçalhos/rodapés do navegador</span>
+      </div>
+    </div>
+  </div>
+
+  <h1>Organograma Sonova</h1>
 
   <!-- Área de Controles (barra flutuante) -->
   <div class="controls">
@@ -353,6 +503,7 @@
       <span class="group-label">Visão</span>
       <button id="btnFecharTodos" class="btn-primary">Fechar Todos (Visão Total)</button>
       <button id="btnAbrirTodos" class="btn-secondary">Abrir Todos (Todos os níveis)</button>
+      <button id="btnImprimir" class="btn-secondary">Imprimir</button>
     </div>
 
     <div class="group">
@@ -1092,6 +1243,77 @@ function parseBytesParaJson(uint8arr, tipoSugerido){
     lis.forEach(li => {
       li.classList.remove('colapsado');
     });
+  });
+
+  // ===============================
+  // Impressão (expande tudo e restaura depois)
+  // ===============================
+  let __printState = null;
+
+  function capturarEstadoColapso(){
+    const lis = Array.from(document.querySelectorAll('li'));
+    return lis.map(li => li.classList.contains('colapsado'));
+  }
+
+  function restaurarEstadoColapso(state){
+    if (!state) return;
+    const lis = Array.from(document.querySelectorAll('li'));
+    lis.forEach((li, idx) => {
+      if (state[idx]) li.classList.add('colapsado');
+      else li.classList.remove('colapsado');
+    });
+  }
+
+  function expandirTudoParaImpressao(){
+    const lis = document.querySelectorAll('li');
+    lis.forEach(li => li.classList.remove('colapsado'));
+  }
+
+
+  function atualizarCarimboImpressao(){
+    const dt = new Date();
+    const dtStr = dt.toLocaleString('pt-BR');
+
+    const fonteEl = document.getElementById("fonteAtual");
+    const fonte = fonteEl ? (fonteEl.textContent || "").trim() : "";
+
+    const lastUrl = localStorage.getItem(LS_KEYS.LAST_URL) || "";
+    const fileName = (lastUrl || fonte || "Arquivo local").trim();
+
+    const totalEl = document.getElementById("totalCount");
+    const totalStr = totalEl ? (totalEl.textContent || "").trim() : "";
+
+    const elDT = document.getElementById("printDateTime");
+    const elFN = document.getElementById("printFileName");
+    const elTT = document.getElementById("printTotal");
+
+    if (elDT) elDT.textContent = "Data/Hora: " + dtStr;
+    if (elFN) elFN.textContent = "Fonte: " + fileName;
+    if (elTT) elTT.textContent = totalStr ? totalStr : "Total: -";
+  }
+
+  function imprimirOrganograma(){
+    atualizarCarimboImpressao();
+    __printState = capturarEstadoColapso();
+    expandirTudoParaImpressao();
+
+    // garante reflow antes do print
+    setTimeout(() => {
+      window.print();
+    }, 50);
+  }
+
+  const btnImp = document.getElementById('btnImprimir');
+  if (btnImp){
+    btnImp.addEventListener('click', function(){
+      imprimirOrganograma();
+    });
+  }
+
+  // Depois da impressão, restaura a visão anterior
+  window.addEventListener('afterprint', function(){
+    restaurarEstadoColapso(__printState);
+    __printState = null;
   });
 
   // ===============================
